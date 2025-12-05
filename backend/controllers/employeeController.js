@@ -79,7 +79,7 @@ exports.create = async (req, res) => {
     }
 
     if (!isValidEmail(email)) {
-      return res.status(400).json({ error: 'Invalid email address' });
+      return res.status(400).json({ error: 'Please enter a valid email ID.' });
     }
 
     if (!isValidPhone(phone)) {
@@ -105,7 +105,18 @@ exports.create = async (req, res) => {
     res.status(201).json(newEmployee);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+
+    // MySQL duplicate key error for unique email
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({
+        error:
+          'Please enter a valid email ID. The given email ID already exists.',
+      });
+    }
+
+    res
+      .status(500)
+      .json({ error: 'Error adding employee. Please try again later.' });
   }
 };
 
@@ -120,7 +131,7 @@ exports.update = async (req, res) => {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    // Validate only if fields are present (but you can also enforce all)
+    // Validate only if fields are present
     if (name && !isValidName(name)) {
       return res
         .status(400)
@@ -128,7 +139,7 @@ exports.update = async (req, res) => {
     }
 
     if (email && !isValidEmail(email)) {
-      return res.status(400).json({ error: 'Invalid email address' });
+      return res.status(400).json({ error: 'Please enter a valid email ID.' });
     }
 
     if (phone && !isValidPhone(phone)) {
@@ -155,7 +166,17 @@ exports.update = async (req, res) => {
     res.json(updated);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({
+        error:
+          'Please enter a valid email ID. The given email ID already exists.',
+      });
+    }
+
+    res
+      .status(500)
+      .json({ error: 'Error updating employee. Please try again later.' });
   }
 };
 
