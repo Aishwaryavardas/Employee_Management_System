@@ -1,4 +1,5 @@
 // frontend/src/pages/EmployeeListPage.js
+
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
@@ -11,9 +12,15 @@ import {
   FaDownload,
   FaMoon,
   FaSun,
+  FaTrash,
+  FaEdit,
 } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import logo from "../assets/logo.png";
+import Navbar from "../components/NavBar";
+
+const PRIMARY = "#0b1120"; // deep navy
+const ACCENT = "#06b6d4";  // teal
 
 const EmployeeListPage = ({ onToggleTheme, isDark }) => {
   const [employees, setEmployees] = useState([]);
@@ -26,8 +33,19 @@ const EmployeeListPage = ({ onToggleTheme, isDark }) => {
   const [order, setOrder] = useState("asc");
   const [loading, setLoading] = useState(false);
   const [showAddOptions, setShowAddOptions] = useState(false);
-  const navigate = useNavigate();
 
+  // theme variables
+  const bgColor = isDark ? PRIMARY : "#f3f4f6";
+  const surfaceColor = isDark ? "#020617" : "#ffffff";
+  const textPrimary = isDark ? "#f9fafb" : "#000000";
+  const textSecondary = isDark ? "#9ca3af" : "#374151";
+  const borderColor = isDark ? "rgba(148,163,184,0.5)" : "#d1d5db";
+  const tableHeaderBg = isDark ? PRIMARY : "#e5f6f9";
+  const inputBg = isDark ? "#020617" : "#ffffff";
+  const labelColor = isDark ? "#e5e7eb" : "#000000";
+  const helperColor = isDark ? textSecondary : "#4b5563";
+
+  const navigate = useNavigate();
   const tableRef = useRef(null);
 
   const scrollToTable = () => {
@@ -47,16 +65,17 @@ const EmployeeListPage = ({ onToggleTheme, isDark }) => {
       const res = await axios.get("http://localhost:5000/employees", {
         params: { search, page, limit, sort, order },
       });
-
-      setEmployees(res.data.employees);
-      setTotal(res.data.total);
+      setEmployees(res.data.employees || []);
+      setTotal(res.data.total || 0);
       setByDepartment(res.data.byDepartment || {});
     } catch (err) {
+      console.error(err);
       setEmployees([]);
       setTotal(0);
       setByDepartment({});
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSort = (field) => {
@@ -69,793 +88,823 @@ const EmployeeListPage = ({ onToggleTheme, isDark }) => {
   };
 
   const getDeptIcon = (dept) => {
-    if (dept === "IT") return <FaLaptopCode size={24} />;
-    if (dept === "HR") return <FaUserTie size={24} />;
-    if (dept === "Finance") return <FaMoneyBillWave size={24} />;
-    return <FaUsers size={22} />;
+    if (dept === "IT") return <FaLaptopCode color={ACCENT} />;
+    if (dept === "HR") return <FaUserTie color={ACCENT} />;
+    if (dept === "Finance") return <FaMoneyBillWave color={ACCENT} />;
+    return <FaUsers color={ACCENT} />;
   };
 
-  const handleDownloadExcel = async () => {
+  const handleExport = () => {
+    if (!employees.length) return;
+    const worksheet = XLSX.utils.json_to_sheet(employees);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Employees");
+    XLSX.writeFile(workbook, "employees.xlsx");
+  };
+
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this employee?"
+    );
+    if (!confirmDelete) return;
+
     try {
-      const res = await axios.get("http://localhost:5000/employees", {
-        params: { search, limit: 10000, sort, order },
-      });
-
-      const allEmployees = res.data.employees;
-
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(
-        allEmployees.map((emp) => ({
-          ID: emp.id,
-          Name: emp.name,
-          Email: emp.email,
-          Phone: emp.phone,
-          Department: emp.department,
-          Salary: emp.salary,
-        }))
-      );
-
-      XLSX.utils.book_append_sheet(wb, ws, "Employees");
-
-      ws["!cols"] = [
-        { wch: 8 },
-        { wch: 20 },
-        { wch: 25 },
-        { wch: 15 },
-        { wch: 15 },
-        { wch: 12 },
-      ];
-
-      XLSX.writeFile(
-        wb,
-        `employees_${new Date().toISOString().split("T")[0]}.xlsx`
-      );
+      await axios.delete(`http://localhost:5000/employees/${id}`);
+      await fetchEmployees();
     } catch (err) {
       console.error(err);
-      alert("Error downloading file");
+      alert(err.response?.data?.error || "Error deleting employee");
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0, y: 15 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
-  };
+  const totalDepartments = Object.keys(byDepartment).length;
 
   return (
-    <div className="page-shell">
-      {/* NAVBAR / HEADER */}
-      <header className="navbar-gradient navbar-shadow">
-        <div className="container d-flex justify-content-between align-items-center py-2">
-          <div className="d-flex align-items-center gap-2">
-            <img
-              src={logo}
-              alt="AcquantHR"
-              style={{ height: "40px", objectFit: "contain" }}
-            />
-            <div>
-              <div
-                className="fw-bold text-white"
-                style={{ letterSpacing: "1px" }}
-              >
-                AcquantHR
-              </div>
-              <small className="text-white-50">
-                Employee Management Dashboard
-              </small>
-            </div>
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: bgColor,
+        color: textPrimary,
+        display: "flex",
+        flexDirection: "column",
+        fontSize: 15,
+      }}
+    >
+      {/* Blended fixed header */}
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 32px",
+          background:
+            "linear-gradient(90deg, rgba(11,17,32,0.96) 0%, rgba(6,182,212,0.92) 70%)",
+          boxShadow: "0 10px 26px rgba(15,23,42,0.45)",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          backdropFilter: "blur(6px)",
+        }}
+      >
+        {/* Left: logo + title and tagline */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <img
+            src={logo}
+            alt="Logo"
+            style={{
+              height: 40,
+              objectFit: "contain",
+              filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.6))",
+            }}
+          />
+
+          <div
+            style={{
+              borderLeft: "1px solid rgba(226,232,240,0.55)",
+              height: 34,
+            }}
+          />
+
+          <div>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 22,
+                fontWeight: 700,
+                color: "#f9fafb",
+              }}
+            >
+              Employee Management
+            </h1>
+            <p
+              style={{
+                margin: 0,
+                marginTop: 2,
+                fontSize: 13,
+                color: "rgba(226,232,240,0.92)",
+              }}
+            >
+              Empowering Acquant HR to manage people with clarity, speed and
+              confidence.
+            </p>
           </div>
+        </div>
 
-          {/* CENTER NAV LINKS */}
-          <nav className="top-nav d-none d-md-flex">
-            <button type="button" className="top-nav-link active">
-              Dashboard
-            </button>
-            <button type="button" className="top-nav-link">
-              Employees
-            </button>
-            <button type="button" className="top-nav-link">
-              Reports
-            </button>
-            <button type="button" className="top-nav-link">
-              Settings
-            </button>
-          </nav>
+        {/* Right: navbar + theme toggle + add employee */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <Navbar />
 
-          {/* Dark mode toggle with icons */}
           <button
-            type="button"
             onClick={onToggleTheme}
-            className="theme-toggle-btn"
+            style={{
+              border: "1px solid rgba(148,163,184,0.75)",
+              borderRadius: 999,
+              backgroundColor: "rgba(15,23,42,0.55)",
+              color: "#e5e7eb",
+              padding: "6px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              cursor: "pointer",
+              fontSize: 14,
+            }}
           >
-            {isDark ? (
-              <>
-                <FaSun style={{ marginRight: 6 }} />
-                Light mode
-              </>
-            ) : (
-              <>
-                <FaMoon style={{ marginRight: 6 }} />
-                Dark mode
-              </>
-            )}
+            {isDark ? <FaSun /> : <FaMoon />}
+            <span>{isDark ? "Light" : "Dark"} mode</span>
           </button>
+
+          <button
+            onClick={() => setShowAddOptions((prev) => !prev)}
+            style={{
+              borderRadius: 999,
+              border: "none",
+              backgroundColor: "#f9fafb",
+              color: "#0b1120",
+              padding: "9px 20px",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontSize: 15,
+              boxShadow: "0 4px 10px rgba(15,23,42,0.35)",
+            }}
+          >
+            + Add Employee
+          </button>
+
+          {showAddOptions && (
+            <div
+              style={{
+                position: "absolute",
+                top: 72,
+                right: 32,
+                backgroundColor: "#020617",
+                borderRadius: 12,
+                boxShadow: "0 10px 25px rgba(15,23,42,0.8)",
+                padding: 8,
+                zIndex: 30,
+              }}
+            >
+              <button
+                onClick={() => navigate("/employees/add")}
+                style={menuItemStyle}
+              >
+                Add manually
+              </button>
+              <button
+                onClick={() => navigate("/employees/add-csv")}
+                style={menuItemStyle}
+              >
+                Upload CSV / Excel
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <motion.div
-        className="main-content container mt-4 mb-4"
-        initial="hidden"
-        animate="visible"
-        variants={containerVariants}
+      {/* Main content (pushed down for fixed header) */}
+      <main
+        style={{
+          padding: "24px 32px",
+          maxWidth: 1200,
+          margin: "90px auto 0",
+          width: "100%",
+          flex: 1,
+        }}
       >
-        {/* HEADER row with search + actions */}
-        <div className="d-flex justify-content-between align-items-center mb-3 header-row">
-          <h5 className="fw-bold mb-0" style={{ letterSpacing: "1px" }}>
-            Employee Dashboard
-          </h5>
+        {/* Summary cards */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 16,
+            marginBottom: 24,
+          }}
+        >
+          <StatCard
+            icon={<FaUsers />}
+            label="Total Employees"
+            value={total}
+            helper="Across all departments"
+            surfaceColor={surfaceColor}
+            borderColor={borderColor}
+            textPrimary={textPrimary}
+            textSecondary={helperColor}
+            labelColor={labelColor}
+            isDark={isDark}
+          />
 
-          <div className="d-flex align-items-center gap-2">
-            <input
-              className="form-control"
-              style={{ maxWidth: "260px" }}
-              type="text"
-              placeholder="Search by name, email, department"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
+          <StatCard
+            icon={<FaLaptopCode />}
+            label="Departments"
+            value={totalDepartments}
+            helper="Active departments in system"
+            surfaceColor={surfaceColor}
+            borderColor={borderColor}
+            textPrimary={textPrimary}
+            textSecondary={helperColor}
+            labelColor={labelColor}
+            isDark={isDark}
+          />
 
-            <button
-              type="button"
-              className="btn btn-download"
-              onClick={handleDownloadExcel}
-              title="Download all employees as Excel"
-            >
-              <FaDownload /> Download
-            </button>
-
-            <div style={{ position: "relative" }}>
-              <button
-                type="button"
-                onClick={() => setShowAddOptions((prev) => !prev)}
-                className="btn-add-employee"
-              >
-                + Add Employee
-              </button>
-
-              {showAddOptions && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "110%",
-                    right: 0,
-                    backgroundColor: "#fff",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "10px",
-                    boxShadow: "0 10px 25px rgba(15,23,42,0.18)",
-                    zIndex: 10,
-                    minWidth: "190px",
-                    overflow: "hidden",
-                  }}
-                >
-                  <button
-                    type="button"
-                    style={{
-                      width: "100%",
-                      padding: "9px 14px",
-                      border: "none",
-                      background: "transparent",
-                      textAlign: "left",
-                      cursor: "pointer",
-                      fontSize: "0.9rem",
-                    }}
-                    onClick={() => {
-                      setShowAddOptions(false);
-                      navigate("/employees/add");
-                    }}
-                  >
-                    Enter manually
-                  </button>
-                  <button
-                    type="button"
-                    style={{
-                      width: "100%",
-                      padding: "9px 14px",
-                      border: "none",
-                      background: "transparent",
-                      textAlign: "left",
-                      cursor: "pointer",
-                      fontSize: "0.9rem",
-                    }}
-                    onClick={() => {
-                      setShowAddOptions(false);
-                      navigate("/employees/add-csv");
-                    }}
-                  >
-                    Add CSV file
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* TOTAL EMPLOYEES card */}
-        <div className="row g-3 mb-3">
           <motion.div
-            className="col-12 col-md-4"
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.2, delay: 0.1 }}
+            whileHover={{
+              y: -3,
+              boxShadow: isDark
+                ? "0 16px 36px rgba(0,0,0,0.9)"
+                : "0 14px 30px rgba(15,23,42,0.16)",
+            }}
+            style={{
+              borderRadius: 20,
+              padding: 18,
+              backgroundColor: surfaceColor,
+              border: `1px solid ${borderColor}`,
+              boxShadow: isDark
+                ? "0 10px 25px rgba(15,23,42,0.6)"
+                : "0 8px 18px rgba(15,23,42,0.06)",
+            }}
           >
-            <div className="card dashboard-card total-card text-white border-0 h-100">
-              <div className="card-body d-flex flex-column justify-content-center align-items-start">
-                <div className="mb-2" style={{ fontSize: "2.4rem" }}>
-                  <FaUsers />
-                </div>
-                <h6
-                  className="text-uppercase mb-1"
-                  style={{ letterSpacing: "0.12em", opacity: 0.9 }}
-                >
-                  Total Employees
-                </h6>
-                <p
-                  className="display-5 fw-bold mb-0"
-                  style={{ lineHeight: 1.1 }}
-                >
-                  {total}
-                </p>
-                <small className="mt-1" style={{ opacity: 0.9 }}>
-                  Across all departments
-                </small>
-              </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 8,
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontSize: 14, color: textSecondary }}>
+                Export
+              </span>
+              <FaDownload color={ACCENT} />
             </div>
+            <button
+              onClick={handleExport}
+              style={{
+                marginTop: 4,
+                padding: "7px 12px",
+                borderRadius: 999,
+                border: `1px solid ${borderColor}`,
+                backgroundColor: bgColor,
+                color: textPrimary,
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              Download Excel
+            </button>
           </motion.div>
         </div>
 
-        {/* DEPARTMENT CARDS */}
-        <div className="row g-3 mb-4">
-          {Object.entries(byDepartment).map(([dept, count], idx) => (
-            <motion.div
-              className="col-6 col-md-3 col-lg-2"
-              key={dept}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 + idx * 0.05 }}
-            >
-              <div
-                className={`card dashboard-card dept-card text-center border-0 dept-${dept.toLowerCase()}`}
-              >
-                <div className="card-body py-3">
-                  <div className="mb-1">{getDeptIcon(dept)}</div>
-                  <small
-                    className="text-uppercase fw-semibold d-block"
-                    style={{ fontSize: "0.75rem" }}
-                  >
-                    {dept}
-                  </small>
-                  <span className="h5 fw-bold mb-0">{count}</span>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+        {/* Search and scroll controls */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 16,
+          }}
+        >
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => {
+              setPage(1);
+              setSearch(e.target.value);
+            }}
+            style={{
+              flex: "1 1 260px",
+              minWidth: 0,
+              padding: "9px 14px",
+              borderRadius: 999,
+              border: `1px solid ${borderColor}`,
+              backgroundColor: inputBg,
+              color: textPrimary,
+              fontSize: 14,
+            }}
+          />
+
+          <button
+            onClick={scrollToTable}
+            style={{
+              borderRadius: 999,
+              border: `1px solid ${borderColor}`,
+              backgroundColor: bgColor,
+              color: textPrimary,
+              padding: "9px 16px",
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            Jump to table
+          </button>
         </div>
 
-        {/* STYLES (dark driven by .dark wrapper in App.js) */}
-        <style>{`
-  :root {
-    --primary: #2563eb;      /* blue accent */
-    --primary-dark: #1d4ed8;
-    --bg-light: #f3f4f6;     /* page background light */
-    --bg-surface: #ffffff;   /* card/table background light */
-    --text-main: #0f172a;
-    --text-muted: #6b7280;
-
-    --bg-dark: #020617;      /* page background dark */
-    --surface-dark: #0b1120; /* main surface dark */
-  }
-
-  .page-shell {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--bg-light);
-  }
-  .dark .page-shell {
-    background-color: var(--bg-dark);
-  }
-
-  /* HEADER – hero bar */
-  .navbar-gradient {
-    background-image: linear-gradient(90deg, #2563eb, #1d4ed8);
-    color: #ffffff;
-    border-radius: 0 0 24px 24px;
-  }
-  .navbar-shadow {
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.35);
-  }
-  .navbar-gradient .fw-bold {
-    font-size: 1.05rem;
-  }
-  .navbar-gradient small {
-    font-size: 0.8rem;
-    opacity: 0.9;
-  }
-  .dark .navbar-gradient {
-    background-image: linear-gradient(90deg, #020617, #111827);
-    color: #e5e7eb;
-  }
-
-  /* TOP NAV LINKS IN HEADER */
-  .top-nav {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-  }
-
-  .top-nav-link {
-    background: transparent;
-    border: none;
-    color: #e5e7eb;
-    font-size: 0.9rem;
-    font-weight: 500;
-    padding: 6px 10px;
-    border-radius: 999px;
-    cursor: pointer;
-    transition: background-color 0.16s ease, color 0.16s ease;
-  }
-
-  .top-nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.12);
-  }
-
-  .top-nav-link.active {
-    background-color: #ffffff;
-    color: #2563eb;
-  }
-
-  .dark .top-nav-link {
-    color: #e5e7eb;
-  }
-  .dark .top-nav-link:hover {
-    background-color: rgba(148, 163, 184, 0.25);
-  }
-  .dark .top-nav-link.active {
-    background-color: #ffffff;
-    color: #2563eb;
-  }
-
-  .theme-toggle-btn {
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.7);
-    background-color: rgba(255,255,255,0.1);
-    color: #ffffff;
-    padding: 4px 14px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    backdrop-filter: blur(8px);
-  }
-  .theme-toggle-btn:hover {
-    background-color: rgba(255,255,255,0.18);
-  }
-
-  /* MAIN SURFACE */
-  .main-content {
-    border-radius: 24px;
-    margin-top: 18px;
-    padding: 20px 24px 28px 24px;
-    color: var(--text-main);
-    background-color: var(--bg-surface);
-    box-shadow: 0 24px 40px rgba(15, 23, 42, 0.16);
-  }
-  .dark .main-content {
-    color: #e5e7eb;
-    background-color: var(--surface-dark);
-    box-shadow: 0 24px 50px rgba(0,0,0,0.8);
-  }
-
-  /* GENERIC CARDS */
-  .dashboard-card {
-    border-radius: 20px;
-    background-color: var(--bg-surface);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
-  }
-  .dark .dashboard-card {
-    background-color: #020617;
-    border-color: #111827;
-    color: #e5e7eb;
-    box-shadow: 0 12px 28px rgba(0,0,0,0.8);
-  }
-
-  /* Total employees card – strong blue tile */
-  .dashboard-card.total-card {
-    background-image: linear-gradient(135deg, #2563eb, #1d4ed8);
-    color: #ffffff;
-    border-color: transparent;
-    box-shadow: 0 16px 32px rgba(37, 99, 235, 0.45);
-  }
-  .dark .dashboard-card.total-card {
-    background-image: linear-gradient(135deg, #1d4ed8, #22c55e);
-  }
-
-  /* Department cards – white tiles */
-  .dashboard-card.dept-card {
-    background-color: #ffffff;
-    border-color: rgba(148, 163, 184, 0.18);
-    color: #0f172a;
-  }
-  .dark .dashboard-card.dept-card {
-    background-color: #ffffff;
-    border-color: rgba(148, 163, 184, 0.35);
-    color: #0f172a;
-  }
-
-  .dashboard-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 18px 32px rgba(15, 23, 42, 0.20);
-  }
-  .dark .dashboard-card:hover {
-    box-shadow: 0 18px 40px rgba(0,0,0,0.9);
-  }
-
-  /* BUTTONS – flat and clean */
-  .btn-download {
-    background-color: #eef2ff;
-    color: #1d4ed8;
-    border-radius: 999px;
-    border: 1px solid #e0e7ff;
-    padding-inline: 14px;
-    font-weight: 500;
-  }
-  .btn-download:hover {
-    background-color: #e0e7ff;
-  }
-  .dark .btn-download {
-    background-color: #111827;
-    color: #e5e7eb;
-    border-color: #1f2937;
-  }
-  .dark .btn-download:hover {
-    background-color: #1f2937;
-  }
-
-  .btn-add-employee {
-    padding: 8px 18px;
-    border-radius: 999px;
-    border: none;
-    background-image: linear-gradient(135deg, #22c55e, #16a34a);
-    color: #ffffff;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    box-shadow: 0 12px 26px rgba(22, 163, 74, 0.4);
-  }
-  .btn-add-employee:hover {
-    filter: brightness(0.96);
-  }
-
-  /* Action buttons */
-  .btn-primary.btn-sm {
-    background-color: #2563eb;
-    border-color: #2563eb;
-    border-radius: 999px;
-  }
-  .btn-primary.btn-sm:hover {
-    background-color: #1d4ed8;
-    border-color: #1d4ed8;
-  }
-  .btn-danger.btn-sm {
-    background-color: #ef4444;
-    border-color: #ef4444;
-    border-radius: 999px;
-  }
-  .btn-danger.btn-sm:hover {
-    background-color: #dc2626;
-    border-color: #dc2626;
-  }
-
-  /* Inputs */
-  .form-control {
-    border-radius: 999px;
-  }
-  .dark .form-control,
-  .dark .form-select {
-    background-color: #020617;
-    color: #f9fafb;
-    border-color: #4b5563;
-  }
-  .dark .form-control::placeholder {
-    color: #9ca3af;
-  }
-
-  /* Table wrapper */
-  .table-wrapper {
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
-    background-color: var(--bg-surface);
-  }
-  .dark .table-wrapper {
-    background-color: #020617;
-    box-shadow: 0 18px 40px rgba(0,0,0,0.9);
-  }
-
-  .table thead.table-dark {
-    background-color: #0f172a;
-  }
-  .dark .table thead.table-dark {
-    background-color: #020617;
-  }
-
-  .table thead th {
-    border-bottom: none;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    font-size: 0.78rem;
-  }
-
-  .table-hover tbody tr {
-    transition: background-color 0.15s ease;
-  }
-  .table-hover tbody tr:hover {
-    background-color: #f1f5f9;
-  }
-  .dark .table-hover tbody tr:hover {
-    background-color: #111827;
-  }
-
-  /* Pagination */
-  .btn-sm {
-    border-radius: 999px;
-    padding: 3px 10px;
-    font-size: 0.75rem;
-  }
-  .pagination .page-link {
-    border-radius: 999px !important;
-    margin: 0 3px;
-  }
-  .pagination .page-item.active .page-link {
-    background-color: var(--primary);
-    border-color: var(--primary);
-  }
-  .dark .pagination .page-link {
-    background-color: #020617;
-    color: #e5e7eb;
-    border-color: #374151;
-  }
-  .dark .pagination .page-item.active .page-link {
-    background-color: var(--primary);
-    border-color: var(--primary);
-  }
-
-  /* FOOTER – same gradient as header */
-  .page-footer {
-    margin-top: auto;
-    background-image: linear-gradient(90deg, #2563eb, #1d4ed8);
-    font-size: 0.8rem;
-    color: #ffffff;
-    border-top-left-radius: 24px;
-    border-top-right-radius: 24px;
-    box-shadow: 0 -10px 26px rgba(15, 23, 42, 0.3);
-  }
-  .page-footer .fw-bold {
-    font-size: 0.9rem;
-  }
-  .page-footer small {
-    font-size: 0.78rem;
-  }
-  .page-footer .footer-pill {
-    background-color: #ffffff;
-    color: #2563eb;
-    border-radius: 999px;
-    padding: 6px 16px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    border: none;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.2);
-  }
-  .page-footer .footer-pill:hover {
-    background-color: #f3f4f6;
-  }
-  .dark .page-footer {
-    background-image: linear-gradient(90deg, #020617, #111827);
-    color: #e5e7eb;
-  }
-  .dark .page-footer .footer-pill {
-    background-color: #ffffff;
-    color: #0f172a;
-  }
-        `}</style>
-
-        {/* TABLE */}
-        <div className="table-wrapper mt-3" ref={tableRef}>
-          <table className="table table-striped table-hover mb-0">
-            <thead className="table-dark">
-              <tr>
-                <th
-                  onClick={() => handleSort("name")}
-                  style={{ cursor: "pointer" }}
-                >
-                  Name
-                </th>
-                <th
-                  onClick={() => handleSort("email")}
-                  style={{ cursor: "pointer" }}
-                >
-                  Email
-                </th>
-                <th>Phone</th>
-                <th
-                  onClick={() => handleSort("department")}
-                  style={{ cursor: "pointer" }}
-                >
-                  Department
-                </th>
-                <th
-                  onClick={() => handleSort("salary")}
-                  style={{ cursor: "pointer" }}
-                >
-                  Salary
-                </th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="6" className="text-center py-5">
-                    <div className="spinner-border text-primary"></div>
-                  </td>
-                </tr>
-              ) : employees.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="text-center py-4">
-                    <img
-                      src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png"
-                      width="100"
-                      alt="No data"
-                    />
-                    <p className="mt-3 text-muted">No Employees Found</p>
-                  </td>
-                </tr>
-              ) : (
-                employees.map((emp) => (
-                  <tr key={emp.id}>
-                    <td>{emp.name}</td>
-                    <td>{emp.email}</td>
-                    <td>{emp.phone}</td>
-                    <td>{emp.department}</td>
-                    <td>₹ {Number(emp.salary).toLocaleString()}</td>
-                    <td>
-                      <Link
-                        to={`/edit/${emp.id}`}
-                        className="btn btn-primary btn-sm me-2"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              "Are you sure you want to delete this employee?"
-                            )
-                          ) {
-                            axios
-                              .delete(
-                                `http://localhost:5000/employees/${emp.id}`
-                              )
-                              .then(fetchEmployees);
-                            scrollToTable();
-                          }
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* PAGINATION */}
-        <nav className="d-flex justify-content-center mt-3">
-          <ul className="pagination">
-            <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
-              <button
-                className="page-link"
-                onClick={() => {
-                  setPage(page - 1);
-                  scrollToTable();
-                }}
-              >
-                Previous
-              </button>
-            </li>
-
-            {Array.from({ length: Math.ceil(total / limit) }, (_, i) => (
-              <li
-                key={i + 1}
-                className={`page-item ${page === i + 1 ? "active" : ""}`}
-              >
-                <button
-                  className="page-link"
-                  onClick={() => {
-                    setPage(i + 1);
-                    scrollToTable();
-                  }}
-                >
-                  {i + 1}
-                </button>
-              </li>
-            ))}
-
-            <li
-              className={`page-item ${
-                page === Math.ceil(total / limit) ? "disabled" : ""
-              }`}
-            >
-              <button
-                className="page-link"
-                onClick={() => {
-                  setPage(page + 1);
-                  scrollToTable();
-                }}
-              >
-                Next
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </motion.div>
-
-      {/* FOOTER */}
-      <footer className="page-footer">
-        <div className="container py-2 d-flex flex-column flex-md-row align-items-center justify-content-between">
-          <div className="mb-2 mb-md-0 text-center text-md-start">
-            <div className="fw-bold">Acquant HR Services Private Limited</div>
-            <small>
-              Registered Office: #156, 'Sampige', 1st Block, Sir M
-              Vishweshwaraiah Layout, Kengeri Satellite Town, Bengaluru-560060
-            </small>
-            <br />
-            <small>
-              Corporate Office: No.170, Manish Arcade, 1st Floor, 1st Stage,
-              3rd Block, Nagarabhavi, Bengaluru-560072
-            </small>
-            <br />
-            <small>CIN: U74909KA2025PTC201756</small>
+        {/* Table */}
+        <section
+          ref={tableRef}
+          style={{
+            borderRadius: 16,
+            backgroundColor: surfaceColor,
+            border: `1px solid ${borderColor}`,
+            boxShadow: isDark
+              ? "0 12px 30px rgba(15,23,42,0.7)"
+              : "0 10px 25px rgba(15,23,42,0.08)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              padding: 14,
+              borderBottom: `1px solid ${borderColor}`,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: 15,
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: 17, color: textPrimary }}>
+              Employees
+            </h2>
+            <span style={{ fontSize: 13, color: textSecondary }}>
+              Page {page} • {employees.length} records
+            </span>
           </div>
 
-          <div className="d-flex flex-column flex-md-row align-items-center gap-2">
-            <a
-              href="mailto:info@acquanhr.com"
-              className="footer-pill text-decoration-none"
+          {loading ? (
+            <div style={{ padding: 24, textAlign: "center", fontSize: 15 }}>
+              Loading employees...
+            </div>
+          ) : employees.length === 0 ? (
+            <div style={{ padding: 24, textAlign: "center", fontSize: 15 }}>
+              No employees found.
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 14,
+                }}
+              >
+                <thead>
+                  <tr
+                    style={{
+                      backgroundColor: tableHeaderBg,
+                      borderBottom: `2px solid ${ACCENT}`,
+                    }}
+                  >
+                    <th
+                      style={{ ...thStyle, color: textPrimary }}
+                      onClick={() => handleSort("name")}
+                    >
+                      Name
+                    </th>
+                    <th
+                      style={{ ...thStyle, color: textPrimary }}
+                      onClick={() => handleSort("email")}
+                    >
+                      Email
+                    </th>
+                    <th style={{ ...thStyle, color: textPrimary }}>Phone</th>
+                    <th
+                      style={{ ...thStyle, color: textPrimary }}
+                      onClick={() => handleSort("department")}
+                    >
+                      Department
+                    </th>
+                    <th
+                      style={{ ...thStyle, color: textPrimary }}
+                      onClick={() => handleSort("salary")}
+                    >
+                      Salary
+                    </th>
+                    <th
+                      style={{ ...thStyle, color: textPrimary, cursor: "default" }}
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {employees.map((emp, index) => (
+                    <tr
+                      key={emp.id}
+                      style={{
+                        borderTop: `1px solid ${borderColor}`,
+                        backgroundColor: isDark
+                          ? "transparent"
+                          : index % 2 === 0
+                          ? "#f5fbfd"
+                          : "#ffffff",
+                      }}
+                    >
+                      <td
+                        style={{
+                          ...tdStyle,
+                          color: textPrimary,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {emp.name}
+                      </td>
+                      <td
+                        style={{
+                          ...tdStyle,
+                          color: textPrimary,
+                          fontSize: 14,
+                        }}
+                      >
+                        {emp.email}
+                      </td>
+                      <td
+                        style={{
+                          ...tdStyle,
+                          color: textPrimary,
+                          fontSize: 14,
+                        }}
+                      >
+                        {emp.phone}
+                      </td>
+                      <td
+                        style={{
+                          ...tdStyle,
+                          color: textPrimary,
+                          fontSize: 14,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          {getDeptIcon(emp.department)}
+                          <span>{emp.department}</span>
+                        </div>
+                      </td>
+                      <td
+                        style={{
+                          ...tdStyle,
+                          color: textPrimary,
+                          fontWeight: 600,
+                          fontSize: 14,
+                        }}
+                      >
+                        ₹ {Number(emp.salary).toLocaleString()}
+                      </td>
+                      <td style={{ ...tdStyle, color: textPrimary }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <Link
+                            to={`/employees/edit/${emp.id}`}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: 999,
+                              backgroundColor: ACCENT,
+                              color: PRIMARY,
+                              fontSize: 13,
+                              textDecoration: "none",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <FaEdit />
+                            Edit
+                          </Link>
+
+                          <button
+                            onClick={() => handleDelete(emp.id)}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: 999,
+                              border: "1px solid rgba(248,113,113,0.9)",
+                              backgroundColor: "transparent",
+                              color: "#b91c1c",
+                              fontSize: 13,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <FaTrash />
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Simple pagination */}
+          <div
+            style={{
+              padding: 14,
+              borderTop: `1px solid ${borderColor}`,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: 14,
+            }}
+          >
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              style={{
+                padding: "7px 12px",
+                borderRadius: 999,
+                border: `1px solid ${borderColor}`,
+                backgroundColor: bgColor,
+                color: textPrimary,
+                cursor: page === 1 ? "not-allowed" : "pointer",
+                opacity: page === 1 ? 0.5 : 1,
+                fontSize: 14,
+              }}
             >
-              ✉ info@acquanhr.com
-            </a>
-            <a
-              href="https://www.acquanhr.com"
-              target="_blank"
-              rel="noreferrer"
-              className="footer-pill text-decoration-none"
+              Previous
+            </button>
+            <span style={{ color: textSecondary, fontSize: 14 }}>
+              Page {page}
+            </span>
+            <button
+              disabled={employees.length < limit}
+              onClick={() =>
+                setPage((p) => (employees.length < limit ? p : p + 1))
+              }
+              style={{
+                padding: "7px 12px",
+                borderRadius: 999,
+                border: `1px solid ${borderColor}`,
+                backgroundColor: bgColor,
+                color: textPrimary,
+                cursor: employees.length < limit ? "not-allowed" : "pointer",
+                opacity: employees.length < limit ? 0.5 : 1,
+                fontSize: 14,
+              }}
             >
-              🌐 www.acquanhr.com
-            </a>
+              Next
+            </button>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer with clickable links */}
+      <footer
+        style={{
+          marginTop: 16,
+          background: "linear-gradient(90deg, #0b1120 0%, #06b6d4 80%)",
+          color: "#f9fafb",
+          padding: "10px 24px 12px",
+          fontSize: 12,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              rowGap: 4,
+              columnGap: 16,
+            }}
+          >
+            <strong style={{ fontSize: 13 }}>
+              Acquant HR Services Private Limited
+            </strong>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <span>CIN: U74909KA2025PTC201756</span>
+
+              <a
+                href="mailto:info@acquanthr.com"
+                style={{ color: "#f9fafb", textDecoration: "underline" }}
+              >
+                info@acquanthr.com
+              </a>
+
+              <a
+                href="https://www.acquanthr.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#f9fafb", textDecoration: "underline" }}
+              >
+                www.acquanthr.com
+              </a>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+              marginTop: 2,
+            }}
+          >
+            <span>
+              <strong>Registered Office:</strong> #156, 'Sampige', 1st Block,
+              Sir M Vishweshwariaha Layout, Kengeri Satellite Town, Bengaluru –
+              560060
+            </span>
+            <span>
+              <strong>Corporate Office:</strong> No.170, Manish Arcade, 1st
+              Floor, 1st Stage, 3rd Block, Nagarabhavi, Bengaluru – 560072
+            </span>
+          </div>
+
+          <div
+            style={{
+              marginTop: 4,
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+              rowGap: 4,
+            }}
+          >
+            <span>
+              © {new Date().getFullYear()} Acquant HR Services Private Limited
+            </span>
+            <span style={{ opacity: 0.9 }}>All rights reserved.</span>
           </div>
         </div>
       </footer>
     </div>
   );
+};
+
+const StatCard = ({
+  icon,
+  label,
+  value,
+  helper,
+  surfaceColor,
+  borderColor,
+  textPrimary,
+  textSecondary,
+  labelColor,
+  isDark,
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    whileHover={{
+      y: -4,
+      boxShadow: isDark
+        ? "0 18px 40px rgba(0,0,0,0.95)"
+        : "0 16px 36px rgba(15,23,42,0.16)",
+    }}
+    transition={{ duration: 0.22 }}
+    style={{
+      position: "relative",
+      overflow: "hidden",
+      borderRadius: 20,
+      padding: 20,
+      background: isDark
+        ? "linear-gradient(135deg, #020617, #0b1120)"
+        : "linear-gradient(135deg, #ffffff, #e5f6f9)",
+      border: `1px solid ${borderColor}`,
+      boxShadow: isDark
+        ? "0 16px 40px rgba(15,23,42,0.8)"
+        : "0 14px 35px rgba(15,23,42,0.10)",
+      backdropFilter: "blur(8px)",
+      cursor: "pointer",
+    }}
+  >
+    <div
+      style={{
+        position: "absolute",
+        right: -30,
+        top: -30,
+        width: 120,
+        height: 120,
+        borderRadius: "50%",
+        background: `radial-gradient(circle at center, ${ACCENT}33, transparent 60%)`,
+        pointerEvents: "none",
+      }}
+    />
+
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 12,
+        marginBottom: 6,
+      }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <span
+          style={{
+            fontSize: 13,
+            letterSpacing: 0.4,
+            textTransform: "uppercase",
+            color: labelColor, // stronger in light mode
+          }}
+        >
+          {label}
+        </span>
+        <span
+          style={{
+            fontSize: 30,
+            fontWeight: 700,
+            color: textPrimary,
+            lineHeight: 1.1,
+          }}
+        >
+          {value}
+        </span>
+      </div>
+
+      <div
+        style={{
+          minWidth: 42,
+          minHeight: 42,
+          borderRadius: 999,
+          background: isDark ? "#020617" : "#dbeafe",
+          border: `1px solid ${ACCENT}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: ACCENT,
+          boxShadow: isDark
+            ? "0 8px 18px rgba(15,23,42,0.9)"
+            : "0 8px 18px rgba(15,23,42,0.15)",
+        }}
+      >
+        <div style={{ fontSize: 20 }}>{icon}</div>
+      </div>
+    </div>
+
+    <p
+      style={{
+        margin: 0,
+        fontSize: 13,
+        color: textSecondary,
+      }}
+    >
+      {helper}
+    </p>
+  </motion.div>
+);
+
+const menuItemStyle = {
+  display: "block",
+  width: "100%",
+  padding: "8px 12px",
+  background: "transparent",
+  border: "none",
+  color: "#e5e7eb",
+  textAlign: "left",
+  cursor: "pointer",
+  fontSize: 14,
+};
+
+const thStyle = {
+  padding: "10px 12px",
+  textAlign: "left",
+  fontWeight: 600,
+  fontSize: 14,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+const tdStyle = {
+  padding: "10px 12px",
+  fontSize: 14,
+  whiteSpace: "nowrap",
 };
 
 export default EmployeeListPage;

@@ -5,7 +5,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "framer-motion";
 
-const AddEmployeePage = () => {
+const PRIMARY = "#0b1120";
+
+const AddEmployeePage = ({ isDark }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,11 +23,21 @@ const AddEmployeePage = () => {
   });
 
   const [file, setFile] = useState(null);
+  const [isEmailValid, setIsEmailValid] = useState(false);
 
   const departments = ["IT", "HR", "Finance", "Marketing", "Sales"];
 
+  const bgColor = isDark ? PRIMARY : "#f3f4f6";
+  const textPrimary = isDark ? "#f9fafb" : "#000000";
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "email") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      setIsEmailValid(emailRegex.test(value) && value.length <= 100);
+    }
   };
 
   const handleManualSubmit = async (e) => {
@@ -143,8 +155,6 @@ const AddEmployeePage = () => {
           return;
         }
 
-        console.log("Sending to backend:", cleaned);
-
         await axios.post("http://localhost:5000/employees/bulk", cleaned);
         alert("Employees added successfully!");
         navigate("/employees");
@@ -168,17 +178,29 @@ const AddEmployeePage = () => {
   };
 
   return (
-    <div className="page-shell">
-      <div className="main-content container mt-4 mb-4">
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: bgColor,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+        paddingTop: 90, // offset for fixed header
+      }}
+    >
+      <div
+        className="main-content container mt-3 mb-4"
+        style={{ maxWidth: 520 }}
+      >
         <h2
           className="mb-4 text-center fw-bold"
-          style={{ letterSpacing: "1px" }}
+          style={{ letterSpacing: "1px", color: textPrimary }}
         >
           Add Employee
         </h2>
 
         <div className="row justify-content-center">
-          <div className="col-md-6 col-lg-5">
+          <div className="col-12">
             <div className="d-flex justify-content-center mb-3">
               <button
                 type="button"
@@ -189,7 +211,7 @@ const AddEmployeePage = () => {
               >
                 Enter manually
               </button>
-              <button
+            <button
                 type="button"
                 className={`btn ${
                   mode === "csv" ? "btn-primary" : "btn-outline-primary"
@@ -258,15 +280,33 @@ const AddEmployeePage = () => {
 
                   <div className="mb-3">
                     <label className="form-label">Email</label>
-                    <input
-                      name="email"
-                      type="email"
-                      className="form-control"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      maxLength={100}
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        name="email"
+                        type="email"
+                        className="form-control"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                        maxLength={100}
+                        style={{ paddingRight: "32px" }}
+                      />
+                      {isEmailValid && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            right: 10,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "#16a34a",
+                            fontSize: 18,
+                            pointerEvents: "none",
+                          }}
+                        >
+                          ✓
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="mb-3">
@@ -313,7 +353,7 @@ const AddEmployeePage = () => {
                     />
                   </div>
 
-                  <button type="submit" className="btn btn-primary w-100">
+                  <button type="submit" className="btn btn-success w-100">
                     Save Employee
                   </button>
                 </motion.form>
