@@ -3,28 +3,42 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import EmployeeListPage from './pages/EmployeeListPage';
 import AddEditEmployeePage from './pages/AddEditEmployeePage';
+import AddEmployeePage from './pages/AddEmployeePage';
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
 
   return (
-    <div className={darkMode ? 'bg-dark text-light min-vh-100' : 'bg-light text-dark min-vh-100'}>
-      <button
-        className="btn btn-outline-secondary m-2"
-        onClick={() => setDarkMode(!darkMode)}
-      >
-        {darkMode ? 'Light Mode' : 'Dark Mode'}
-      </button>
-    <Router>
-      <Routes>
-        <Route path="/" element={<EmployeeListPage />} />
-        <Route path="/add" element={<AddEditEmployeePage />} />
-        <Route path="/edit/:id" element={<AddEditEmployeePage />} />
-      </Routes>
-    </Router>
+    // this class is what your .dark CSS in EmployeeListPage is using
+    <div className={darkMode ? 'dark' : ''}>
+      <Router>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <EmployeeListPage
+                onToggleTheme={() => setDarkMode((prev) => !prev)}
+                isDark={darkMode}
+              />
+            }
+          />
+          <Route
+            path="/employees"
+            element={
+              <EmployeeListPage
+                onToggleTheme={() => setDarkMode((prev) => !prev)}
+                isDark={darkMode}
+              />
+            }
+          />
+          <Route path="/add" element={<AddEditEmployeePage />} />
+          <Route path="/edit/:id" element={<AddEditEmployeePage />} />
+          <Route path="/employees/add" element={<AddEmployeePage />} />
+          <Route path="/employees/add-csv" element={<AddEmployeePage />} />
+        </Routes>
+      </Router>
     </div>
   );
 }
-
 
 export default App;
