@@ -1,97 +1,130 @@
-Short Description
-A full-stack Employee Management System (EMS) built using:
+# Employee Management System (EMS)
 
-Frontend: React
+## Short Description
 
-Backend: Node.js + Express
+A full-stack **Employee Management System (EMS)** built using:
 
-Database: MySQL
+* **Frontend**: React
+* **Backend**: Node.js + Express
+* **Database**: MySQL
 
-Features
-Employee CRUD (Create, Read, Update, Delete)
+The application is designed to manage employees efficiently with modern UI/UX features, validation, and bulk data handling.
 
-Client- and server-side validation
+---
 
-Unique email per employee with friendly duplicate-email message
+## Features
 
-Search by name or email
+* ✅ Employee CRUD (Create, Read, Update, Delete)
+* ✅ Client-side and server-side validation
+* ✅ Unique email validation with friendly error message
+* ✅ Search by **name** or **email**
+* ✅ Sorting on multiple columns:
 
-Sorting on multiple columns (name, email, department, salary)
+  * Name
+  * Email
+  * Department
+  * Salary
+* ✅ Pagination
+* ✅ Department-wise summary
+* ✅ Department icons (IT, HR, Finance, Marketing, Sales)
+* ✅ Export employees to **Excel**
+* ✅ Bulk upload employees from **Excel / CSV**
+* ✅ Light / Dark theme toggle
+* ✅ Animated stat cards
+* ✅ Company footer with registered & corporate office details
 
-Pagination
+---
 
-Department-wise summary (total employees, number of departments)
+## Screenshots
 
-Department icons (IT, HR, Finance, Marketing, Sales)
+> Place your screenshots inside: `docs/images/`
 
-Export employees to Excel
+```text
+docs/images/
+  HomePage.png
+  ReportsPage.png
+  EmployeeTable.png
+  bulk_upload.png
+```
 
-Bulk upload employees from Excel/CSV
+### Dashboard / Employee List
 
-Light/Dark mode theme with animated stat cards
+![Home Page](docs/images/HomePage.png)
 
-Company footer with registered and corporate office details
+![Reports Page](docs/images/ReportsPage.png)
 
-Screenshots
-Place your screenshots in docs/images/ and update the filenames below.
+![Employee Table](docs/images/EmployeeTable.png)
 
-Dashboard / Employee List
-![Home Page] ems\images\docs\HomePage.png
+---
 
-![Reports Page](ems\images\docs\ReportsPage.png
+## Repository Structure (Top Level)
 
-![Bulk Upload screenshot](docs/images/bulk_upload.png / Summary
-
-![Employee Table](ems\images\docs\EmployeeTable.png
-
-Repository Structure (Top Level)
-text
+```text
 ems-application/
-  backend/              → Node/Express API (MySQL)
-  frontend/             → React frontend
-  docs/
-    images/             → Screenshots used by README
-  README.md             → Project documentation
-Backend (inside backend/)
-text
+│
+├── backend/               → Node/Express API (MySQL)
+├── frontend/              → React frontend
+├── docs/
+│   └── images/            → Screenshots used by README
+└── README.md              → Project documentation
+```
+
+---
+
+## Backend Structure
+
+```text
 backend/
-  app.js                → Express app entry
-  db.js                 → MySQL connection pool
-  models/
-    employee.js         → Employee model & queries
-  controllers/
-    employeeController.js → CRUD, search, bulk upload, validation
-  routes/
-    employeeRoutes.js   → /employees routes
-  package.json
-Frontend (inside frontend/)
-text
+ ├── app.js                     → Express app entry
+ ├── db.js                       → MySQL connection pool
+ ├── models/
+ │    └── employee.js           → Employee model & queries
+ ├── controllers/
+ │    └── employeeController.js → CRUD, search, bulk upload, validation
+ ├── routes/
+ │    └── employeeRoutes.js     → /employees routes
+ └── package.json
+```
+
+---
+
+## Frontend Structure
+
+```text
 frontend/
-  src/
-    App.js              → Routing & theme toggle
-    components/
-      NavBar.js
-      SearchBar.js
-      EmployeeTable.js
-      Pagination.js
-      DepartmentChart.js
-    pages/
-      Dashboard.js
-      EmployeeListPage.js
-      AddEmployeePage.js
-      AddEditEmployeePage.js
-      ReportsPage.js
-    assets/
-      logo.png
-  package.json
-Quick Start (Development)
-1. Start the Backend
-bash
+ ├── src/
+ │   ├── App.js
+ │   ├── components/
+ │   │   ├── NavBar.js
+ │   │   ├── SearchBar.js
+ │   │   ├── EmployeeTable.js
+ │   │   ├── Pagination.js
+ │   │   └── DepartmentChart.js
+ │   ├── pages/
+ │   │   ├── Dashboard.js
+ │   │   ├── EmployeeListPage.js
+ │   │   ├── AddEmployeePage.js
+ │   │   ├── AddEditEmployeePage.js
+ │   │   └── ReportsPage.js
+ │   └── assets/
+ │       └── logo.png
+ └── package.json
+```
+
+---
+
+## Quick Start (Development)
+
+### 1. Start the Backend
+
+```bash
 cd backend
 npm install
-Configure MySQL in backend/db.js:
+```
 
-js
+Edit `backend/db.js`:
+
+```js
 const mysql = require("mysql2/promise");
 
 const pool = mysql.createPool({
@@ -102,9 +135,11 @@ const pool = mysql.createPool({
 });
 
 module.exports = pool;
+```
+
 Create database and table:
 
-sql
+```sql
 CREATE DATABASE ems;
 USE ems;
 
@@ -116,66 +151,92 @@ CREATE TABLE employees (
   department VARCHAR(50) NOT NULL,
   salary DECIMAL(15,2) NOT NULL
 );
+```
+
 Run the backend:
 
-bash
+```bash
 npm start
-Backend will run at:
+```
 
-text
+Backend runs at:
+
+```text
 http://localhost:5000
-2. Start the Frontend
-bash
+```
+
+---
+
+### 2. Start the Frontend
+
+```bash
 cd frontend
 npm install
 npm start
-Frontend will run at:
+```
 
-text
+Frontend runs at:
+
+```text
 http://localhost:3000
-Make sure API URLs in the React code (for example in EmployeeListPage.js, AddEmployeePage.js, AddEditEmployeePage.js) point to http://localhost:5000.
+```
 
-Important Notes
-The backend is the source of truth for:
+Make sure your API URLs in React files
+(`EmployeeListPage.js`, `AddEmployeePage.js`, `AddEditEmployeePage.js`)
+point to:
 
-Employee data
+```text
+http://localhost:5000
+```
 
-Email uniqueness
+---
 
-Salary values and validation
+## Important Notes
 
-The frontend handles:
+### Backend is the source of truth for:
 
-Form UI and basic validation (lengths, formats)
+* Employee data
+* Email uniqueness
+* Salary values & validation
 
-Theme toggle and animations
+### Frontend handles:
 
-UX features like checkmark for valid email and smooth scrolling
+* UI & forms
+* Basic validation (lengths, formats)
+* Theme toggle & animations
+* User experience (checkmarks, smooth scrolling)
 
-Bulk upload:
+---
 
-Accepts .xlsx, .xls, .csv
+## Bulk Upload
 
-Skips invalid or duplicate rows and continues with valid ones
+* Supports: **.xlsx, .xls, .csv**
+* Skips invalid or duplicate rows
+* Continues with valid entries
 
-Duplicate email:
+---
 
-Backend checks MySQL error ER_DUP_ENTRY
+## Duplicate Email Handling
 
-Returns a custom message like:
-“Please enter a valid email ID. The given email ID already exists.”
+If a duplicate email is found, the backend throws **ER_DUP_ENTRY** and sends a custom message:
 
-Future Improvements
-Add authentication and role-based access (Admin / HR)
+```text
+"Please enter a valid email ID. The given email ID already exists."
+```
 
-Add profile photos for employees
+---
 
-More detailed reports and charts (salary ranges, department trends)
+## Future Improvements
 
-Export filtered results only
+* Authentication & role-based access (Admin / HR)
+* Profile photos for employees
+* Advanced visual reports & charts
+* Export filtered data
+* Docker configuration
 
-Docker setup for easier deployment
+---
 
-Author
-Aishwarya
-GitHub: https://github.com/Aishwarya-I
+## Author
+
+**Aishwarya**
+GitHub: [https://github.com/Aishwarya-I](https://github.com/Aishwarya-I)
