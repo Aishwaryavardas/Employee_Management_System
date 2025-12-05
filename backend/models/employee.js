@@ -34,6 +34,32 @@ class Employee {
     return rows[0].count;
   }
 
+  // ✅ NEW: global department counts (independent of page/limit)
+  static async countByDepartment({ search, department }) {
+    let query =
+      'SELECT department, COUNT(*) as count FROM employees WHERE 1=1';
+    const params = [];
+
+    if (search) {
+      query += ' AND (name LIKE ? OR email LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    if (department) {
+      query += ' AND department = ?';
+      params.push(department);
+    }
+
+    query += ' GROUP BY department';
+
+    const [rows] = await db.query(query, params);
+
+    const result = {};
+    rows.forEach((row) => {
+      result[row.department] = row.count;
+    });
+    return result; // e.g. { IT: 5, HR: 3 }
+  }
+
   static async findById(id) {
     const [rows] = await db.query('SELECT * FROM employees WHERE id = ?', [id]);
     return rows[0];
