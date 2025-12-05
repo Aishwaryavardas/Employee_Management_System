@@ -11,28 +11,22 @@ A full-stack **Employee Management System (EMS)** built using:
 The application is designed to manage employees efficiently with modern UI/UX features, validation, and bulk data handling.
 
 ---
+##Features
+Employee CRUD
 
-## Features
+Validation + unique email check
 
-* ✅ Employee CRUD (Create, Read, Update, Delete)
-* ✅ Client-side and server-side validation
-* ✅ Unique email validation with friendly error message
-* ✅ Search by **name** or **email**
-* ✅ Sorting on multiple columns:
+Search & multi-column sort
 
-  * Name
-  * Email
-  * Department
-  * Salary
-* ✅ Pagination
-* ✅ Department-wise summary
-* ✅ Department icons (IT, HR, Finance, Marketing, Sales)
-* ✅ Export employees to **Excel**
-* ✅ Bulk upload employees from **Excel / CSV**
-* ✅ Light / Dark theme toggle
-* ✅ Animated stat cards
-* ✅ Company footer with registered & corporate office details
+Pagination
 
+Department summary with icons
+
+Excel export & bulk upload (Excel/CSV)
+
+Light/Dark theme
+
+Animated stats + company footer
 ---
 
 ## Screenshots
