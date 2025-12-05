@@ -12,6 +12,7 @@ The application is designed to manage employees efficiently with modern UI/UX fe
 
 ---
 ##Features
+
 Employee CRUD
 
 Validation + unique email check
@@ -25,21 +26,6 @@ Department summary with icons
 Excel export & bulk upload (Excel/CSV)
 
 Light/Dark theme
-
-Animated stats + company footer
----
-
-## Screenshots
-
-> Place your screenshots inside: `docs/images/`
-
-```text
-docs/images/
-  HomePage.png
-  ReportsPage.png
-  EmployeeTable.png
-  bulk_upload.png
-```
 
 ### Dashboard / Employee List
 
@@ -114,6 +100,7 @@ frontend/
 ```bash
 cd backend
 npm install
+node app.js
 ```
 
 Edit `backend/db.js`:
